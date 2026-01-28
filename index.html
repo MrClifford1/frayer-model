@@ -6,25 +6,26 @@
     <link href="https://fonts.googleapis.com/css2?family=Lexend:wght@400;700&display=swap" rel="stylesheet">
     <style>
         :root { --blue: #00E5FF; --yellow: #FFD600; --orange: #FF6D00; --pink: #FF007F; --dark: #1A237E; }
-        body { font-family: 'Lexend', sans-serif; display: flex; flex-direction: column; align-items: center; padding: 20px; }
-        .frayer-grid { display: grid; grid-template-columns: 1fr 1fr; grid-template-rows: 1fr 1fr; gap: 15px; width: 90vw; max-width: 900px; height: 550px; position: relative; }
+        body { font-family: 'Lexend', sans-serif; display: flex; flex-direction: column; align-items: center; padding: 20px; color: var(--dark); }
+        .frayer-grid { display: grid; grid-template-columns: 1fr 1fr; grid-template-rows: 1fr 1fr; gap: 15px; width: 95vw; max-width: 900px; height: 550px; position: relative; }
         .box { border: 4px solid; border-radius: 30px; padding: 20px; background: #fff; overflow-y: auto; }
         .definition { border-color: var(--blue); background: #E0F7FA; }
         .facts { border-color: var(--yellow); background: #FFFDE7; }
         .examples { border-color: var(--orange); background: #FFF3E0; }
         .non-examples { border-color: var(--pink); background: #FCE4EC; }
-        .center-ui { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); background: white; border: 4px solid var(--dark); width: 200px; height: 200px; border-radius: 50%; display: flex; flex-direction: column; justify-content: center; align-items: center; z-index: 10; box-shadow: 0 5px 15px rgba(0,0,0,0.2); }
-        input { width: 80%; border: none; border-bottom: 2px solid #ccc; text-align: center; font-size: 16px; margin-bottom: 10px; outline: none; }
-        button { padding: 8px 15px; border-radius: 20px; border: none; font-weight: bold; cursor: pointer; }
+        .center-ui { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); background: white; border: 4px solid var(--dark); width: 220px; height: 220px; border-radius: 50%; display: flex; flex-direction: column; justify-content: center; align-items: center; z-index: 10; box-shadow: 0 5px 15px rgba(0,0,0,0.2); }
+        input { width: 80%; border: none; border-bottom: 2px solid #ccc; text-align: center; font-size: 18px; margin-bottom: 10px; outline: none; font-family: 'Lexend'; }
+        button { padding: 8px 15px; border-radius: 20px; border: none; font-weight: bold; cursor: pointer; font-family: 'Lexend'; }
         #go-btn { background: var(--dark); color: white; }
         #clear-btn { background: #eee; margin-left: 5px; }
+        h2 { margin-top: 0; font-size: 1.2rem; text-align: center; }
     </style>
 </head>
 <body>
-    <h1>Frayer Model Generator</h1>
+    <h1 style="align-self: flex-start; margin-left: 5%; font-size: 2.5rem;">Frayer Model</h1>
     <div class="frayer-grid">
         <div class="box definition"><h2>Definition</h2><p id="def-out"></p></div>
-        <div class="box facts"><h2>Facts</h2><ul id="facts-out"></ul></div>
+        <div class="box facts"><h2>Facts/Characteristics</h2><ul id="facts-out"></ul></div>
         <div class="box examples"><h2>Examples</h2><ul id="ex-out"></ul></div>
         <div class="box non-examples"><h2>Non-Examples</h2><ul id="non-out"></ul></div>
         <div class="center-ui">
@@ -34,7 +35,6 @@
     </div>
 
     <script>
-        // REPLACE THE KEY BELOW IF IT IS DEACTIVATED
         const API_KEY = "AIzaSyDqIvq7pmkkqpKVZ00aMUyUOWD4hi9OxqY";
 
         document.getElementById('go-btn').onclick = async () => {
@@ -42,25 +42,30 @@
             if (!word) return;
             
             const btn = document.getElementById('go-btn');
-            btn.innerText = "Wait...";
+            btn.innerText = "...";
             btn.disabled = true;
 
-            const prompt = `Create a Frayer Model for "${word}" for 11-18 year olds. Return ONLY JSON: {"def":"","facts":["","",""],"exs":["","",""],"nons":["","",""]}`;
+            // Updated prompt and used a more stable model version
+            const prompt = `Act as a secondary school teacher. Create a Frayer Model for the term "${word}". 
+            Return ONLY a JSON object: {"def":"definition","facts":["fact1","fact2","fact3"],"exs":["ex1","ex2","ex3"],"nons":["non1","non2","non3"]}`;
 
             try {
-                const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${API_KEY}`, {
+                // Changed model to gemini-pro which is highly compatible with v1beta
+                const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-pro:generateContent?key=${API_KEY}`;
+                
+                const response = await fetch(url, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ contents: [{ parts: [{ text: prompt }] }] })
                 });
 
-                if (!response.ok) {
-                    const errorData = await response.json();
-                    throw new Error(`API Error: ${errorData.error.message}`);
-                }
-
                 const result = await response.json();
-                const cleanJson = JSON.parse(result.candidates[0].content.parts[0].text.replace(/```json|```/g, ""));
+                
+                if (result.error) throw new Error(result.error.message);
+
+                let rawText = result.candidates[0].content.parts[0].text;
+                // Clean the response in case Gemini adds markdown code blocks
+                const cleanJson = JSON.parse(rawText.replace(/```json|```/g, "").trim());
 
                 document.getElementById('def-out').innerText = cleanJson.def;
                 document.getElementById('facts-out').innerHTML = cleanJson.facts.map(i => `<li>${i}</li>`).join('');
@@ -68,7 +73,7 @@
                 document.getElementById('non-out').innerHTML = cleanJson.nons.map(i => `<li>${i}</li>`).join('');
 
             } catch (err) {
-                alert(`Error: ${err.message}\n\nTip: If it says 'API key not found', you need a new key.`);
+                alert("Error: " + err.message);
                 console.error(err);
             } finally {
                 btn.innerText = "Go";
@@ -76,7 +81,11 @@
             }
         };
 
-        document.getElementById('clear-btn').onclick = () => location.reload();
+        document.getElementById('clear-btn').onclick = () => {
+            document.getElementById('term-in').value = "";
+            document.getElementById('def-out').innerText = "";
+            document.querySelectorAll('ul').forEach(ul => ul.innerHTML = "");
+        };
     </script>
 </body>
 </html>
