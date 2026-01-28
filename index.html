@@ -45,13 +45,13 @@
             btn.innerText = "...";
             btn.disabled = true;
 
-            // Updated prompt and used a more stable model version
             const prompt = `Act as a secondary school teacher. Create a Frayer Model for the term "${word}". 
+            Provide 1 definition, 3 characteristics, 3 examples, and 3 non-examples.
             Return ONLY a JSON object: {"def":"definition","facts":["fact1","fact2","fact3"],"exs":["ex1","ex2","ex3"],"nons":["non1","non2","non3"]}`;
 
             try {
-                // Changed model to gemini-pro which is highly compatible with v1beta
-                const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-pro:generateContent?key=${API_KEY}`;
+                // CHANGED: Using v1/gemini-1.5-flash for maximum reliability
+                const url = `https://generativelanguage.googleapis.com/v1/models/gemini-1.5-flash:generateContent?key=${API_KEY}`;
                 
                 const response = await fetch(url, {
                     method: 'POST',
@@ -64,7 +64,6 @@
                 if (result.error) throw new Error(result.error.message);
 
                 let rawText = result.candidates[0].content.parts[0].text;
-                // Clean the response in case Gemini adds markdown code blocks
                 const cleanJson = JSON.parse(rawText.replace(/```json|```/g, "").trim());
 
                 document.getElementById('def-out').innerText = cleanJson.def;
